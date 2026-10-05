@@ -59,6 +59,7 @@ footer{text-align:center;color:var(--t3);font-size:13px;padding:26px}
 </header>
 
 <div class="sec" id="report">
+  <div id="demoBanner" style="display:none;background:#FFF7E6;border:1.5px dashed #E8A33D;border-radius:14px;padding:14px 18px;margin:22px 0 0;text-align:center;font-size:14.5px;color:#8A5A00">⚠️ 当前展示的是 <b>演示数据</b>（合成的 824km / 103 次），不是你的真实记录 👆 回到顶部导入你的 Garmin CSV 即可生成真实报告</div>
   <div class="statgrid" id="statGrid"></div>
   <div class="chartbox"><h3>📊 月跑量</h3><p class="desc">每个月跑了多少公里</p><canvas id="chMonth" height="210"></canvas></div>
   <div class="chartbox"><h3>⚡ 配速趋势</h3><p class="desc">每一次跑步的平均配速 —— 曲线向上 = 越跑越快</p><canvas id="chPace" height="230"></canvas></div>
@@ -240,6 +241,7 @@ function loadFile(f){
 function setRuns(rows,label,demo){
   RUNS=rows; DEMO=demo; STATS=computeRunStats(rows);
   $('fileName').textContent='✅ '+label+(demo?'（演示数据）':'');
+  $('demoBanner').style.display=demo?'block':'none';
   $('report').classList.add('on');
   buildReport();
   window.scrollTo({top:$('report').offsetTop-10,behavior:'smooth'});

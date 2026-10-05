@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>跑步年度报告 · 本地版 Strava 年报</title>
+<style>
+:root{--acc:#FF5A3C;--acc-d:#E04A2E;--acc-l:#FFE9E4;--bg:#FAFAF8;--surface:#fff;--t1:#1A1A1A;--t2:#4A4543;--t3:#9C9590;--line:#EFE9E2;--body:system-ui,-apple-system,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif}
+*{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--t1);font-family:var(--body);font-size:15.5px;line-height:1.7}
+.wrap{max-width:980px;margin:0 auto;padding:0 20px 80px}
+header{text-align:center;padding:34px 0 6px}
+h1{font-size:27px;margin:0 0 6px}.sub{color:var(--t2);font-size:14.5px;margin:0 0 18px}
+.drop{border:2px dashed #E4D9CF;border-radius:16px;background:var(--surface);padding:26px 18px;max-width:640px;margin:0 auto;cursor:pointer;text-align:center}
+.drop:hover,.drop.over{border-color:var(--acc);background:#FFF7F5}
+.drop input{display:none}.drop .big{font-size:34px}.drop p{margin:8px 0 0;color:var(--t2);font-size:14.5px}
+.drop .file{color:var(--t3);font-size:13px;margin-top:6px;word-break:break-all}
+.rowbtns{display:flex;gap:10px;justify-content:center;margin:14px 0 0;flex-wrap:wrap}
+.rowbtns button{border:1px solid var(--line);background:#fff;border-radius:999px;padding:8px 20px;font-size:13.5px;cursor:pointer;font-family:inherit;color:var(--t2)}
+.rowbtns button:hover{border-color:var(--acc);color:var(--acc-d)}
+.sec{display:none}.sec.on{display:block}
+.statgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:26px 0 20px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 14px;text-align:center}
+.stat b{font-size:25px;color:var(--acc-d);display:block;line-height:1.35}
+.stat span{font-size:13px;color:var(--t2)}
+.chartbox{border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:18px;background:#fff}
+.chartbox h3{margin:0 0 4px;font-size:17px}
+.chartbox .desc{color:var(--t3);font-size:13px;margin:0 0 12px}
+.chartbox canvas{width:100%;display:block}
+.pbgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.pb{background:linear-gradient(135deg,#FFF3EF,#FFFDFB);border:1px solid var(--line);border-radius:14px;padding:16px;text-align:center}
+.pb .d{font-size:13px;color:var(--t3)}.pb .p{font-size:26px;font-weight:800;color:var(--acc-d);margin:4px 0}.pb .m{font-size:12.5px;color:var(--t3)}
+.typelist{display:flex;flex-wrap:wrap;gap:8px}
+.typelist span{background:var(--acc-l);color:var(--acc-d);border-radius:999px;padding:6px 16px;font-size:13.5px;font-weight:600}
+.btn{display:block;width:100%;border:none;border-radius:999px;background:var(--acc);color:#fff;font-size:16px;font-weight:700;padding:14px;cursor:pointer;font-family:inherit;margin-top:6px}
+.btn:hover{background:var(--acc-d)}
+.hint{color:var(--t3);font-size:13px;text-align:center;margin-top:10px}
+.howto{max-width:640px;margin:26px auto 0;background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 20px;font-size:14px;color:var(--t2)}
+.howto h4{margin:0 0 8px;font-size:15px}.howto ol{margin:0;padding-left:20px}.howto li{margin:4px 0}
+.empty{color:var(--t3);text-align:center;padding:50px 10px}
+footer{text-align:center;color:var(--t3);font-size:13px;padding:26px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>🏃 跑步年度报告</h1>
+  <p class="sub">本地版 Strava 年报：导入 Garmin 数据，一键生成你的跑步故事 —— 全程离线，数据不出本机</p>
+  <div class="drop" id="drop">
+    <input type="file" id="file" accept=".csv,text/csv">
+    <div class="big">📥</div>
+    <p><b>点击选择</b> 或把 Garmin 导出的 <b>CSV</b> 拖到这里</p>
+    <div class="file" id="fileName">尚未导入</div>
+  </div>
+  <div class="rowbtns">
+    <button id="btnDemo">✨ 先看演示数据</button>
+    <button id="btnTpl">⬇️ 下载 CSV 模板</button>
+  </div>
+</header>
+
+<div class="sec" id="report">
+  <div class="statgrid" id="statGrid"></div>
+  <div class="chartbox"><h3>📊 月跑量</h3><p class="desc">每个月跑了多少公里</p><canvas id="chMonth" height="210"></canvas></div>
+  <div class="chartbox"><h3>⚡ 配速趋势</h3><p class="desc">每一次跑步的平均配速 —— 曲线向上 = 越跑越快</p><canvas id="chPace" height="230"></canvas></div>
+  <div class="chartbox"><h3>🟩 跑步热力图</h3><p class="desc">每一天的跑步距离</p><canvas id="chHeat" height="150"></canvas></div>
+  <div class="chartbox"><h3>🏆 PB 榜</h3><p class="desc">按距离匹配的最快成绩（取最接近该距离的一次跑步）</p><div class="pbgrid" id="pbGrid"></div></div>
+  <div class="chartbox"><h3>🏷️ 训练类型</h3><p class="desc">从活动名称识别的训练类型分布</p><div class="typelist" id="typeList"></div></div>
+  <div class="chartbox"><h3>🎯 目标追踪</h3><p class="desc">看看离目标还有多远</p><div id="goalBox"></div></div>
+  <button class="btn" id="btnCard">⬇️ 生成年度跑步卡片（PNG，可发小红书）</button>
+  <p class="hint">1080px 精美卡片：总跑量 + 月跑量 + PB + 年度一句话</p>
+</div>
+
+<div class="howto" id="howto">
+  <h4>📋 如何获取 Garmin 数据？</h4>
+  <ol>
+    <li>打开 <b>Garmin Connect 网页版</b>（connect.garmin.cn）→ 活动 → 所有活动</li>
+    <li>点击右上角 <b>导出 CSV</b>，下载活动列表文件</li>
+    <li>把 CSV 拖到上方 👆，报告自动生成</li>
+    <li>没有 Garmin？点 <b>✨ 先看演示数据</b> 体验，或 <b>⬇️ 下载 CSV 模板</b> 手填</li>
+  </ol>
+</div>
+</div>
+<footer>🏃 跑步年度报告 · 单文件离线应用 · 数据仅在你的浏览器中使用</footer>
+
+<script>
+'use strict';
+/* ================= 数据层（纯函数） ================= */
+function parseHMS(s){
+  if(s==null||s==='') return null;
+  s=String(s).trim();
+  if(/^\d+(\.\d+)?$/.test(s)) return parseFloat(s);
+  const p=s.split(':').map(Number);
+  if(p.some(isNaN)) return null;
+  if(p.length===3) return p[0]*3600+p[1]*60+p[2];
+  if(p.length===2) return p[0]*60+p[1];
+  return null;
+}
+function parsePace(s){
+  if(s==null||s==='') return null;
+  s=String(s).trim().replace(/\/km.*$/i,'');
+  const sec=parseHMS(s);
+  return sec&&sec>60?sec:null; // 配速至少大于1分钟/km
+}
+function parseCSV(text){
+  const lines=text.replace(/^\uFEFF/,'').split(/\r?\n/).filter(l=>l.trim());
+  if(lines.length<2) return [];
+  const split=l=>{const r=[];let c='',q=false;
+    for(const ch of l){ if(ch==='"'){q=!q;continue;} if(ch===','&&!q){r.push(c);c='';continue;} c+=ch; } r.push(c); return r.map(x=>x.trim()); };
+  const head=split(lines[0]).map(h=>h.toLowerCase());
+  const find=(...ks)=>head.findIndex(h=>ks.some(k=>h.includes(k)));
+  // 模板格式：必须有 distance_km 列（精确匹配，避免误判 Garmin 导出）
+  if(head.includes('distance_km')){
+    const ci={date:head.indexOf('date'),km:find('distance_km','distance'),min:find('duration_min','duration'),
+              hr:find('avg_hr','hr'),title:find('title','name')};
+    return lines.slice(1).map(l=>{const c=split(l);
+      const km=parseFloat(c[ci.km]); if(!km||km<=0) return null;
+      const min=ci.min>=0?parseFloat(c[ci.min]):null;
+      return {date:(c[ci.date]||'').slice(0,10), km, sec:min?min*60:null,
+              avgHr:ci.hr>=0?parseFloat(c[ci.hr])||null:null,
+              title:ci.title>=0?c[ci.title]:'', type:'running'};
+    }).filter(Boolean);
+  }
+  // Garmin Connect 导出格式
+  const ci={type:find('activity type','activitytype'), date:find('date'), title:find('title','activity name'),
+            dist:find('distance'), time:find('time')>=0?head.findIndex(h=>h==='time'||h==='moving time'):find('time'),
+            pace:find('avg pace','pace'), hr:find('avg hr')};
+  if(ci.date<0||ci.dist<0) return [];
+  let mileMode=head[ci.dist].includes('mi');
+  const rows=[];
+  for(const l of lines.slice(1)){
+    const c=split(l);
+    const type=(c[ci.type]||'').toLowerCase();
+    if(type&&!/run/.test(type)) continue; // 只要跑步
+    let km=parseFloat(c[ci.dist]); if(!km||km<=0) continue;
+    if(mileMode) km*=1.60934;
+    if(km>500) km/=1000; // 米 → 公里
+    const sec=ci.time>=0?parseHMS(c[ci.time]):null;
+    rows.push({date:(c[ci.date]||'').slice(0,10), km, sec,
+      avgHr:ci.hr>=0?parseFloat(c[ci.hr])||null:null,
+      title:ci.title>=0?c[ci.title]:'', type:'running'});
+  }
+  return rows;
+}
+function paceStr(secPerKm){
+  if(!secPerKm) return '--';
+  const m=Math.floor(secPerKm/60), s=Math.round(secPerKm%60);
+  return m+"'"+String(s).padStart(2,'0')+'"';
+}
+function computeRunStats(runs){
+  runs=runs.filter(r=>r.km>0).sort((a,b)=>a.date<b.date?-1:1);
+  const totalKm=runs.reduce((s,r)=>s+r.km,0);
+  const withT=runs.filter(r=>r.sec&&r.sec>0);
+  const totalSec=withT.reduce((s,r)=>s+r.sec,0);
+  const kmWithT=withT.reduce((s,r)=>s+r.km,0);
+  const avgPace=kmWithT?totalSec/kmWithT:null;
+  const perMonth=new Map(), perDay=new Map();
+  for(const r of runs){
+    const mk=r.date.slice(0,7);
+    if(!perMonth.has(mk)) perMonth.set(mk,{km:0,n:0});
+    perMonth.get(mk).km+=r.km; perMonth.get(mk).n++;
+    perDay.set(r.date,(perDay.get(r.date)||0)+r.km);
+  }
+  // PB：目标距离 ±4% 内取最快配速
+  const targets=[[1,'1K'],[5,'5K'],[10,'10K'],[21.0975,'半马']];
+  const pbs=targets.map(([t,label])=>{
+    const cands=withT.filter(r=>r.km>=t*0.96&&r.km<=t*1.04);
+    if(!cands.length) return {label,pace:null};
+    cands.sort((a,b)=>(a.sec/a.km)-(b.sec/b.km));
+    const b=cands[0];
+    return {label,pace:b.sec/b.km,date:b.date,km:b.km,title:b.title};
+  });
+  // 训练类型
+  const typeKeys=['基础','恢复','间歇','阈值','冲刺','节奏','长距离','LSD','法特莱克','热身','放松','比赛','测试'];
+  const typeCount=new Map();
+  for(const r of runs){
+    const hit=typeKeys.find(k=>(r.title||'').includes(k));
+    typeCount.set(hit||'自由跑',(typeCount.get(hit||'自由跑')||0)+1);
+  }
+  // 最长距离 / 连击
+  let longest=runs[0]||null;
+  for(const r of runs) if(r.km>(longest?longest.km:0)) longest=r;
+  const daySet=new Set(runs.map(r=>r.date));
+  let streak=0; const d=new Date();
+  const iso=x=>x.toISOString().slice(0,10);
+  if(!daySet.has(iso(d))) d.setDate(d.getDate()-1);
+  while(daySet.has(iso(d))){streak++;d.setDate(d.getDate()-1);}
+  return {runs,totalKm,count:runs.length,totalSec,avgPace,
+    perMonth:[...perMonth.entries()].sort(),perDay,
+    pbs,typeCount:[...typeCount.entries()].sort((a,b)=>b[1]-a[1]),
+    longest,streak,
+    firstDate:runs.length?runs[0].date:'',lastDate:runs.length?runs[runs.length-1].date:''};
+}
+function demoData(){
+  // 12 个月合成数据：跑量渐增、配速渐快
+  const out=[];let seed=42;
+  const rnd=()=>{seed=(seed*1103515245+12345)&0x7fffffff;return seed/0x7fffffff;};
+  const d=new Date();d.setMonth(d.getMonth()-11);d.setDate(1);
+  const types=['基础训练','恢复训练','间歇训练','乳酸阈值','长距离','节奏跑'];
+  while(d<new Date()){
+    const mk=d.toISOString().slice(0,7);
+    const n=6+Math.floor(rnd()*8);
+    for(let i=0;i<n;i++){
+      const day=1+Math.floor(rnd()*27);
+      const dist=[3,5,6,8,10,12][Math.floor(rnd()*6)]+rnd()*2;
+      const base=300-rnd()*40-(d.getMonth()%12)*1.2; // 越来越快
+      const pace=base+rnd()*30;
+      out.push({date:mk+'-'+String(day).padStart(2,'0'),km:+dist.toFixed(2),
+        sec:Math.round(dist*pace),avgHr:Math.round(135+rnd()*25),
+        title:'演示 - '+types[Math.floor(rnd()*types.length)],type:'running'});
+    }
+    d.setMonth(d.getMonth()+1);
+  }
+  return out.filter(r=>r.date<new Date().toISOString().slice(0,10));
+}
+</script>
+
+<script>
+'use strict';
+let RUNS=[], STATS=null, DEMO=false;
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+/* ---------- 导入 ---------- */
+const drop=$('drop'), fileInput=$('file');
+drop.onclick=()=>fileInput.click();
+['dragover','dragenter'].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.add('over');}));
+['dragleave','drop'].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.remove('over');}));
+drop.addEventListener('drop',ev=>{if(ev.dataTransfer.files[0])loadFile(ev.dataTransfer.files[0]);});
+fileInput.onchange=()=>{if(fileInput.files[0])loadFile(fileInput.files[0]);};
+function loadFile(f){
+  $('fileName').textContent='⏳ 正在解析 '+f.name+' …';
+  const r=new FileReader();
+  r.onload=()=>{ try{
+      const rows=parseCSV(r.result);
+      if(!rows.length){$('fileName').textContent='⚠️ 未识别到跑步数据，试试下载 CSV 模板';return;}
+      setRuns(rows,f.name+' · '+rows.length+' 次跑步',false);
+    }catch(e){$('fileName').textContent='⚠️ 解析失败：'+e.message;} };
+  r.readAsText(f);
+}
+function setRuns(rows,label,demo){
+  RUNS=rows; DEMO=demo; STATS=computeRunStats(rows);
+  $('fileName').textContent='✅ '+label+(demo?'（演示数据）':'');
+  $('report').classList.add('on');
+  buildReport();
+  window.scrollTo({top:$('report').offsetTop-10,behavior:'smooth'});
+}
+$('btnDemo').onclick=()=>setRuns(demoData(),'演示数据 · 12 个月',true);
+$('btnTpl').onclick=()=>{
+  const csv='date,distance_km,duration_min,avg_hr,title\n2026-10-01,5.2,26,148,晨跑-基础训练\n2026-10-03,8.0,42,152,周末长距离\n';
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv'}));
+  a.download='跑步数据模板.csv';a.click();
+};
+
+/* ---------- 图表 ---------- */
+function setupCanvas(cv,hCss){
+  const dpr=window.devicePixelRatio||1,w=cv.clientWidth||cv.parentElement.clientWidth-36;
+  cv.width=w*dpr;cv.height=hCss*dpr;
+  const ctx=cv.getContext('2d');ctx.scale(dpr,dpr);return[ctx,w,hCss];
+}
+function buildReport(){
+  const s=STATS;
+  $('statGrid').innerHTML=[
+    ['🏃',s.totalKm.toFixed(0)+' km','总跑量'],
+    ['🗓️',s.count+' 次','跑步次数'],
+    ['⏱️',Math.round(s.totalSec/3600)+' h','总时长'],
+    ['⚡',paceStr(s.avgPace)+'/km','平均配速'],
+    ['🏅',s.longest?s.longest.km.toFixed(1)+' km':'—','最长单次'],
+    ['🔥',s.streak+' 天','连续跑步']
+  ].map(([e,v,k])=>'<div class="stat"><b>'+e+' '+v+'</b><span>'+k+'</span></div>').join('');
+  drawMonth();drawPace();drawHeat();drawPB();drawTypes();drawGoal();
+}
+function drawMonth(){
+  const[ctx,W,H]=setupCanvas($('chMonth'),210);
+  const ms=STATS.perMonth,padL=44,padB=28,padT=12,cw=(W-padL-10)/ms.length,bh=H-padB-padT;
+  const max=Math.max(...ms.map(([,v])=>v.km),1);
+  ctx.font='11px system-ui';ctx.textAlign='right';ctx.fillStyle='#9C9590';
+  for(let g=0;g<=4;g++){const v=max*g/4,y=padT+bh-bh*g/4;
+    ctx.fillText(v.toFixed(0)+'k',padL-6,y+4);
+    ctx.strokeStyle='#F1ECE6';ctx.beginPath();ctx.moveTo(padL,y);ctx.lineTo(W-10,y);ctx.stroke();}
+  ctx.textAlign='center';
+  ms.forEach(([[k],v],i)=>{
+    const h=Math.max(3,bh*v.km/max),x=padL+i*cw+cw*0.2,w=cw*0.6;
+    const gr=ctx.createLinearGradient(0,padT+bh-h,0,padT+bh);
+    gr.addColorStop(0,'#FF7A5C');gr.addColorStop(1,'#E04A2E');
+    ctx.fillStyle=gr;ctx.beginPath();ctx.roundRect(x,padT+bh-h,w,h,4);ctx.fill();
+    ctx.fillStyle='#4A4543';ctx.fillText(v.km.toFixed(0),x+w/2,padT+bh-h-6);
+    ctx.fillStyle='#9C9590';ctx.fillText(k.slice(2),x+w/2,H-8);
+  });
+}
+function drawPace(){
+  const[ctx,W,H]=setupCanvas($('chPace'),230);
+  const pts=STATS.runs.filter(r=>r.sec&&r.km>=2).map(r=>({t:new Date(r.date).getTime(),p:r.sec/r.km}));
+  if(pts.length<2){ctx.fillStyle='#9C9590';ctx.fillText('数据不足',W/2,H/2);return;}
+  const t0=pts[0].t,t1=pts[pts.length-1].t||pts[0].t+1;
+  let pMin=Math.min(...pts.map(p=>p.p)),pMax=Math.max(...pts.map(p=>p.p));
+  pMin-=15;pMax+=15;
+  const padL=52,padB=28,padT=14,pw=W-padL-14,ph=H-padB-padT;
+  const X=t=>padL+pw*(t-t0)/Math.max(1,t1-t0), Y=p=>padT+ph*(p-pMin)/(pMax-pMin);
+  ctx.font='11px system-ui';ctx.textAlign='right';ctx.fillStyle='#9C9590';
+  for(let g=0;g<=4;g++){const v=pMin+(pMax-pMin)*g/4,y=Y(v);
+    ctx.fillText(paceStr(v),padL-6,y+4);
+    ctx.strokeStyle='#F1ECE6';ctx.beginPath();ctx.moveTo(padL,y);ctx.lineTo(W-14,y);ctx.stroke();}
+  // 趋势线（移动平均）
+  ctx.strokeStyle='#FF5A3C';ctx.lineWidth=2.5;ctx.beginPath();
+  const win=Math.max(1,Math.floor(pts.length/12));
+  pts.forEach((p,i)=>{
+    const s=Math.max(0,i-win),e=Math.min(pts.length,i+win+1);
+    const avg=pts.slice(s,e).reduce((a,q)=>a+q.p,0)/(e-s);
+    i?ctx.lineTo(X(p.t),Y(avg)):ctx.moveTo(X(p.t),Y(avg));
+  });
+  ctx.stroke();
+  ctx.fillStyle='rgba(255,90,60,.35)';
+  pts.forEach(p=>{ctx.beginPath();ctx.arc(X(p.t),Y(p.p),3,0,7);ctx.fill();});
+  ctx.fillStyle='#9C9590';ctx.textAlign='center';
+  ctx.fillText(STATS.firstDate.slice(0,7),padL+20,H-8);
+  ctx.fillText(STATS.lastDate.slice(0,7),W-40,H-8);
+}
+function drawHeat(){
+  const[ctx,W,H]=setupCanvas($('chHeat'),150);
+  const days=[...STATS.perDay.entries()].sort();if(!days.length)return;
+  const t0=new Date(days[0][0]+'T00:00:00'),t1=new Date(days[days.length-1][0]+'T00:00:00');
+  const start=new Date(t0);start.setDate(start.getDate()-((start.getDay()+6)%7));
+  const weeks=Math.ceil(((t1-start)/864e5+1)/7);
+  const cell=Math.min(15,(W-10)/weeks),gap=3,ox=5,oy=8;
+  const max=Math.max(...days.map(d=>d[1]),1),m=new Map(days);
+  const cmap=v=>{if(!v)return'#F0ECE6';const t=v/max;
+    return t<.25?'#FFD9CD':t<.5?'#FFAB90':t<.75?'#FF7A5C':'#D63A1E';};
+  for(let wi=0;wi<weeks;wi++)for(let di=0;di<7;di++){
+    const d=new Date(start);d.setDate(d.getDate()+wi*7+di);
+    if(d<t0||d>t1)continue;
+    const k=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    ctx.fillStyle=cmap(m.get(k)||0);
+    ctx.beginPath();ctx.roundRect(ox+wi*(cell+gap),oy+di*(cell+gap),cell,cell,3);ctx.fill();
+  }
+}
+function drawPB(){
+  $('pbGrid').innerHTML=STATS.pbs.map(p=>'<div class="pb"><div class="d">'+p.label+'</div><div class="p">'+
+    (p.pace?paceStr(p.pace)+'<span style="font-size:14px">/km</span>':'暂无')+'</div><div class="m">'+
+    (p.pace?esc(p.date)+' · '+p.km.toFixed(1)+'km':'跑一次接近该距离试试')+'</div></div>').join('');
+}
+function drawTypes(){
+  $('typeList').innerHTML=STATS.typeCount.map(([k,v])=>'<span>'+esc(k)+' × '+v+'</span>').join('');
+}
+function drawGoal(){
+  const pb5=STATS.pbs[1];
+  const target=240; // 5K sub20 → 4'00"/km
+  const cur=pb5.pace;
+  let html='<div style="font-size:14.5px;color:var(--t2)">🎯 <b>5K 跑进 20 分钟</b>（目标配速 4\'00"/km）</div>';
+  if(cur){
+    const gap=cur-target;
+    html+='<div style="margin-top:8px;font-size:15px">'+(gap<=0
+      ?'🎉 <b style="color:var(--acc-d)">已达成！</b>当前 PB 配速 '+paceStr(cur)+'/km'
+      :'当前接近 5K 的最快配速 <b>'+paceStr(cur)+'/km</b>，还差 <b style="color:var(--acc-d)">'+paceStr(gap)+'/km</b> —— 目标在望！')+'</div>';
+    const pct=Math.min(100,Math.max(4,target/cur*100));
+    html+='<div style="background:#F1ECE6;border-radius:999px;height:12px;margin-top:10px"><div style="width:'+pct+'%;height:12px;border-radius:999px;background:linear-gradient(90deg,#FF7A5C,#E04A2E)"></div></div>';
+  }else html+='<div style="margin-top:8px">跑一次 5K 左右的距离，这里会自动追踪你的 sub20 进度</div>';
+  $('goalBox').innerHTML=html;
+}
+/* ---------- 分享卡片 ---------- */
+$('btnCard').onclick=()=>{
+  const s=STATS;if(!s)return;
+  const W=1080,H=1500,cv=document.createElement('canvas');cv.width=W;cv.height=H;
+  const x=cv.getContext('2d');
+  const g=x.createLinearGradient(0,0,W,H);g.addColorStop(0,'#FFF7F4');g.addColorStop(1,'#FFE9E2');
+  x.fillStyle=g;x.fillRect(0,0,W,H);
+  x.textAlign='center';x.fillStyle='#1A1A1A';
+  x.font='700 62px system-ui,"PingFang SC","Microsoft YaHei"';
+  x.fillText('🏃 我的跑步年度报告',W/2,110);
+  x.font='32px system-ui,"PingFang SC"';x.fillStyle='#4A4543';
+  x.fillText(s.firstDate.slice(0,7)+' ~ '+s.lastDate.slice(0,7)+(DEMO?' · 演示数据':''),W/2,168);
+  const items=[['总跑量',s.totalKm.toFixed(0)+'km'],['跑步次数',s.count+'次'],['平均配速',paceStr(s.avgPace)],['总时长',Math.round(s.totalSec/3600)+'h']];
+  items.forEach(([k,v],i)=>{
+    const cx=W*(0.14+0.24*i);
+    x.fillStyle='#fff';x.beginPath();x.roundRect(cx-115,210,230,150,24);x.fill();
+    x.fillStyle='#E04A2E';x.font='700 52px system-ui';x.fillText(v,cx,282);
+    x.fillStyle='#9C9590';x.font='28px system-ui,"PingFang SC"';x.fillText(k,cx,332);
+  });
+  // 月跑量迷你图
+  x.textAlign='left';x.fillStyle='#1A1A1A';x.font='700 38px system-ui,"PingFang SC"';
+  x.fillText('📊 月跑量',60,440);
+  const ms=s.perMonth,max=Math.max(...ms.map(([,v])=>v.km),1);
+  const bw=(W-120)/ms.length;
+  ms.forEach(([[k],v],i)=>{
+    const h=Math.max(4,220*v.km/max),bx=60+i*bw+6;
+    const gr=x.createLinearGradient(0,660-h,0,660);gr.addColorStop(0,'#FF7A5C');gr.addColorStop(1,'#E04A2E');
+    x.fillStyle=gr;x.beginPath();x.roundRect(bx,660-h,bw-12,h,6);x.fill();
+    x.fillStyle='#9C9590';x.font='22px system-ui';x.textAlign='center';x.fillText(k.slice(5)+'月',bx+(bw-12)/2,690);x.textAlign='left';
+  });
+  // PB
+  const py=780;
+  x.fillStyle='#1A1A1A';x.font='700 38px system-ui,"PingFang SC"';x.fillText('🏆 PB 榜',60,py);
+  x.font='34px system-ui,"PingFang SC"';
+  s.pbs.forEach((p,i)=>{
+    const yy=py+56+i*58;
+    x.fillStyle='#4A4543';x.fillText(p.label,60,yy);
+    x.fillStyle='#E04A2E';x.font='700 34px system-ui';
+    x.fillText(p.pace?paceStr(p.pace)+'/km':'--',300,yy);
+    x.font='34px system-ui,"PingFang SC"';x.fillStyle='#4A4543';
+  });
+  // 一句话
+  x.textAlign='center';x.fillStyle='#1A1A1A';x.font='700 40px system-ui,"PingFang SC","Microsoft YaHei"';
+  const line=s.totalKm>=500?'这一年，你跑过了 '+s.totalKm.toFixed(0)+' 公里，超越了昨天的自己。'
+    :'每一步都算数，下一站：跑得更远。';
+  x.fillText(line,W/2,H-220,980);
+  x.fillStyle='#9C9590';x.font='28px system-ui,"PingFang SC"';
+  x.fillText('由跑步年度报告生成 · 数据仅在本地计算',W/2,H-120);
+  const a=document.createElement('a');
+  a.download='跑步年度报告.png';a.href=cv.toDataURL('image/png');a.click();
+};
+</script>
+</body>
+</html>
